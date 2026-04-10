@@ -13,6 +13,8 @@ from main_function_beta import main_fct
 from data_pair.fct_data_extraction import (little_pair, images_pair)
 
 
+#CODE TEST
+
 
 #Path for S2 and L8 data
 path_1               = './2023/crop/S2_bis_crop'    #Sentinel-2 data
