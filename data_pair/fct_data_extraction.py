@@ -44,6 +44,8 @@ class little_pair(raster_data):
         self.square_crop_dict_2 = []
         self.r_array = None
         self.c_array = None
+        self.selected_r_array = None
+        self.selected_c_array = None
         self.overlap = overlap
         self.scale = scale
         self.batch_size = batch_size
@@ -142,8 +144,8 @@ class little_pair(raster_data):
 
                 if self.overlap is not None:
 
-                    a = self.r_array[i] + self.batch_size * self.percentage_overlap
-                    b = self.c_array[i] + self.batch_size * self.percentage_overlap
+                    self.selected_r_array = self.r_array[i] + self.batch_size * self.percentage_overlap
+                    self.selected_c_array = self.c_array[i] + self.batch_size * self.percentage_overlap
                     little_pair.no_overlap(self, a, b)
                     # i = 0 ?
                     # print(f"new r_data size {len(self.r_array)}")
