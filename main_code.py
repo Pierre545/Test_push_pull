@@ -1,5 +1,5 @@
 import os
-path_work = "/projects/EVS-Sisyphe/Paudisio/Database"
+path_work = "C:/Users/pC/Desktop/STAGE_ENSL/2023_out"
 os.chdir(path_work)
 
 import numpy as np
@@ -9,30 +9,32 @@ import torch
 from torch.utils.data import DataLoader
 from torch.utils.data import TensorDataset
 import sys
-from main_function_beta import main_fct
-from data_pair.fct_data_extraction import (little_pair, images_pair)
+from verify_overlap_mod import (verify_overlap_condition , visualize_comparison)
+from main_function_original import main_fct
+from fct_data_extraction import (little_pair, images_pair)
 
 
 
 #Path for S2 and L8 data
-path_1               = './2023/crop/S2_bis_crop'    #Sentinel-2 data
-path_2               = './2023/crop/L8_bis_crop'    #HLS data
+path_1               = 'C:/Users/pC/Desktop/STAGE_ENSL/2023/S2_bis_crop'    #Sentinel-2 data
+path_2               = 'C:/Users/pC/Desktop/STAGE_ENSL/2023/L8_bis_crop'    #HLS data
 
 outpath_1, outpath_2 = main_fct.SL_create_csv(path_1,path_2)    #Create a 2 csv files associating a class to each image depending on the acquisition date
 
 
 pair_dict                 =  images_pair.paths_pair(outpath_1, outpath_2)
-csv_pair_path             = "2023/path_pair_test.csv"
+csv_pair_path             = "C:/Users/pC/Desktop/STAGE_ENSL/2023_out/path_pair_test.csv"
+
 #Save a csv containing path_pair
 images_pair.write_dict(pair_dict,csv_pair_path)
 
-main_fct.tensor_creator(csv_pair_path,"./test1",number_files=None )    #"./test1" is the path of the folder wich will contain all the output, here the HR_LR folders
+main_fct.tensor_creator(csv_pair_path,"C:/Users/pC/Desktop/STAGE_ENSL/2023_out/test1",number_files=None )    #"./test1" is the path of the folder wich will contain all the output, here the HR_LR folders
 
 
 
 def dataset_creation(path_1, save=1):
     #path_1 should correspond to the path of the folder containing all the folder of pair
-    path_centerline = "./2023/RCT_raster_centerline.tif"
+    path_centerline = "C:/Users/pC/Desktop/STAGE_ENSL/RCT_raster_centerline.tif"
 
     dir = os.listdir(path_1)
     n = 1
@@ -55,8 +57,9 @@ def dataset_creation(path_1, save=1):
                 """
                 Check if littler_pair_object. are not considered empty
                 """
+                all_coords = []
                 if len(little_pair_object.square_crop_dict_1) and len(little_pair_object.square_crop_dict_2) :
-
+                    all_coords.extend(little_pair_object.final_coords)
                     tmp_target = torch.cat(little_pair_object.square_crop_dict_1)
                     tmp_train = torch.cat(little_pair_object.square_crop_dict_2)
 
@@ -76,24 +79,39 @@ def dataset_creation(path_1, save=1):
 
         if save :
             torch.save(dataset, "./LandsatHLS_Sentinel2_dataset_2Version.pth")
+        return np.array(all_coords)
 
 
-# if __name__ == "__main__":
-path_1 = "./test1"
-# dataset_creation(path_1,1)
-dataset_creation(path_1)
 
 
-# spectral_tensor = torch.load("total_dataset_WithShuffle_2703.pth",weights_only=False)
-# loader = DataLoader(dataset, batch_size=2)
-# dinv.utils.plot(spectral_tensor[0])
-#os.chdir("/projects/EVS-Sisyphe/Paudisio/Database")
+
+BATCH_SIZE = 300
+SCALE = 3
+OVERLAP_VAL = 0.7
 
 
-# Normaliser les données
-# Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-9999.0..-9999.0].
+if __name__ == "__main__":
+    
+    path_centerline = "C:/Users/pC/Desktop/STAGE_ENSL/RCT_raster_centerline.tif"
+    outpath_1, outpath_2 = main_fct.SL_create_csv(path_1, path_2)
+    pair_dict = images_pair.paths_pair(outpath_1, outpath_2)
+    csv_pair_path = "C:/Users/pC/Desktop/STAGE_ENSL/2023_out/path_pair_test.csv"
+    images_pair.write_dict(pair_dict, csv_pair_path)
+    
 
-#Normalize iteratively the data
-# for i in range(len(train)):
-#     tmp = target[i]
-#     target[i] = normalize(tmp)
+    # Positions de Distance Euclidienne
+    coords_DE = verify_overlap_condition(path_centerline, BATCH_SIZE, SCALE, OVERLAP_VAL, visualize=True)    
+
+    # dataset creation
+    coords_real = dataset_creation("C:/Users/pC/Desktop/STAGE_ENSL/2023_out/test1")
+    
+    
+    # COMPARAISON
+    coords_real_unique = np.unique(coords_real, axis=0)  # pour ne garder que les positions géographiques distinctes
+    print(f"Nombre de positions  via crop : {len(coords_real_unique)}")
+    print(f"Nombre de positions  via DE : {len(coords_DE)}")
+    
+    visualize_comparison(path_centerline, coords_DE, coords_real_unique, BATCH_SIZE, OVERLAP_VAL)
+    
+    
+        
