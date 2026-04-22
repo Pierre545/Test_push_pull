@@ -37,20 +37,22 @@ class little_pair(raster_data):
         :param percentage_overlap: if overlap not accepted "overlap=1", you can specify the max percentage of overlaping accepted between two images between [0,1]
         : ex: you choose 0.1 that means that you accept an overlapping of equal to batch_size*(1-0.1), so 90% of overlapping
         """
+        
 
         # self.square_crop_dict_1 = {}
         # self.square_crop_dict_2 = {}
         self.square_crop_dict_1 = []
         self.square_crop_dict_2 = []
-        self.r_array = None
-        self.c_array = None
-        self.selected_r_array = None
-        self.selected_c_array = None
+        self.r_array = []
+        self.c_array = []
+        self.selected_r_array = []
+        self.selected_c_array = []
         self.overlap = overlap
         self.scale = scale
         self.batch_size = batch_size
         self.centerline = little_pair.import_raster_data(path2raster_centerline)
         # self.centerline = self.centerline[::self.scale,::self.scale]
+        self.final_coords = []
 
         if percentage_overlap is None:
             self.percentage_overlap = 1
@@ -75,6 +77,17 @@ class little_pair(raster_data):
                 self.c_array.append(c_array_tmp[i])
 
     def no_overlap(self, a, b):
+        "Logique de fonctionnement : Si  un point (R, C) est selectionné, le code supprime tous les autres candidats" 
+        "qui partagent la même bande de lignes a< R < b OU la même bande de colonnes a < C < b "
+        "Elle supprime tous les points dont la ligne ou la colonne est entre a et b."
+        " Si les points de centerline sont alignés horizontalement ou verticalement, "
+        "un seul point sélectionné peut vider des centaines de candidats sur toute la longueur de l'image,"
+        " même s'ils sont loin physiquement" 
+        "Si on valides un patch , on ne pourra plus jamais prendre de patches sur "
+        "la même ligne ou la même colonne, même s'ils sont à l'autre bout de l'image."
+
+        "Resultat : Nombre de points via DE : 82 "
+        "Nombre de points via Crop  : 1  "
         indices_2_remove = []
         for index, value in enumerate(self.r_array):    #Remove index of batch horizontally superposed
             if a <= value <= b:
@@ -89,6 +102,29 @@ class little_pair(raster_data):
         self.r_array = [value for idx, value in enumerate(self.r_array) if idx not in indices_2_remove]
         self.c_array = [value for idx, value in enumerate(self.c_array) if idx not in indices_2_remove]
 
+    ######## Fonction no_overlap avec la methode de distance euclidienne
+    " Les resultats sont beaucoup plus meilleur avec cette methode"
+    " Elle calcule la distance directe (en ligne droite) entre le nouveau centre et les candidats."
+    " Elle ne supprime que les points situés à l intérieur dun rayon min_dist."
+    
+    " Resultats : Nombre de points via DE  : 82 "
+    " Nombre de points via Crop  : 86  "
+
+    # def no_overlap(self, last_r, last_c):
+    #     min_dist = self.batch_size * (1 - self.percentage_overlap)
+    
+    #     indices_2_keep = []
+    #     for i in range(len(self.r_array)):
+    #         # Calcul de la distance euclidienne avec le point que l'on vient de cropper
+    #         dist = math.sqrt((self.r_array[i] - last_r)**2 + (self.c_array[i] - last_c)**2)
+    #         if dist >= min_dist:
+    #             indices_2_keep.append(i)
+            
+    #         # On ne garde que les points qui sont en dehors du cercle d'exclusion
+    #     self.r_array = [self.r_array[i] for i in indices_2_keep]
+    #     self.c_array = [self.c_array[i] for i in indices_2_keep]
+    
+    
     def crop_pair_hv(self, path2tensor_1, path2tensor_2):
         assert torch.load(path2tensor_1,weights_only=True).shape[2]//torch.load(path2tensor_2,weights_only=True).shape[2] ==  self.scale, "This code only works with scale equal to the dimension ratio between the two images"
 
@@ -139,14 +175,18 @@ class little_pair(raster_data):
 
                 # dinv.utils.plot([square_crop_1[0, :3, :, :].unsqueeze(0)],titles=f"Sentinel-2 - date {path2tensor_1[40:47]}")
                 # dinv.utils.plot([square_crop_2[0, :3, :, :].unsqueeze(0)],titles=f"Landsat - date {path2tensor_2[44:51]}")
-
+                self.final_coords.append((tmp_1, tmp_2)) 
+   
                 nb_data = nb_data + 1
 
                 if self.overlap is not None:
 
                     self.selected_r_array = self.r_array[i] + self.batch_size * self.percentage_overlap
                     self.selected_c_array = self.c_array[i] + self.batch_size * self.percentage_overlap
-                    little_pair.no_overlap(self, a, b)
+                    #little_pair.no_overlap(self, self.selected_r_array, self.selected_c_array)
+
+                    self.no_overlap(tmp_1, tmp_2)
+                    i = -1
                     # i = 0 ?
                     # print(f"new r_data size {len(self.r_array)}")
 
@@ -267,9 +307,3 @@ class images_pair() :
 
         except ValueError:
             print(ValueError)
-
-
-
-
-
-
