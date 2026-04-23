@@ -26,7 +26,7 @@ csv_pair_path             = "2023/path_pair_test.csv"
 #Save a csv containing path_pair
 images_pair.write_dict(pair_dict,csv_pair_path)
 
-main_fct.tensor_creator(csv_pair_path,"./test1",number_files=None )    #"./test1" is the path of the folder wich will contain all the output, here the HR_LR folders
+main_fct.tensor_creator(csv_pair_path,"./test2",number_files=None )    #"./test1" is the path of the folder wich will contain all the output, here the HR_LR folders
 
 
 
@@ -79,7 +79,7 @@ def dataset_creation(path_1, save=1):
 
 
 # if __name__ == "__main__":
-path_1 = "./test1"
+path_1 = "./test2"
 # dataset_creation(path_1,1)
 dataset_creation(path_1)
 
